@@ -1,0 +1,193 @@
+﻿/*
+FileName: Polynomial
+Function: Enter polynomial A(x) and B(x), calculate the C(x) = A(x) + B(x).
+Author: EthanWu
+DataTime: 2023/10/18
+*/
+
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+class Term {
+public:
+    float coef; // 系数
+    int exp; // 指数
+
+    Term() : coef(0), exp(0) {} // 默认构造函数，初始化系数和指数为0
+    Term(float c, int e) : coef(c), exp(e) {} // 带参数的构造函数，初始化系数和指数
+};
+
+class Polynomial {
+public:
+    Polynomial();
+    ~Polynomial();
+
+    Polynomial add(const Polynomial& poly) const; // 多项式加法
+    Polynomial sub(const Polynomial& poly) const; // 多项式减法
+    float eval(float x) const; // 求值函数
+
+    void addTerm(float coef, int exp); // 添加项
+
+    friend ostream& operator<<(ostream& os, const Polynomial& poly); // 输出运算符重载
+    friend istream& operator>>(istream& is, Polynomial& poly); // 输入运算符重载
+
+private:
+    Term* termArray; // 动态数组存储非零项
+    int capacity; // 数组容量
+    int terms; // 当前项数
+
+    void resize(int newCapacity); // 调整数组大小
+};
+
+Polynomial::Polynomial() : capacity(10), terms(0) {
+    termArray = new Term[capacity]; // 初始化数组容量为10
+}
+
+Polynomial::~Polynomial() {
+    delete[] termArray; // 释放动态数组的内存
+}
+
+void Polynomial::resize(int newCapacity) {
+    Term* newTermArray = new Term[newCapacity]; // 创建新数组
+    for (int i = 0; i < terms; ++i) {
+        newTermArray[i] = termArray[i]; // 复制旧数组的数据到新数组
+    }
+    delete[] termArray; // 释放旧数组的内存
+    termArray = newTermArray; // 更新指针指向新数组
+    capacity = newCapacity; // 更新容量
+}
+
+void Polynomial::addTerm(float coef, int exp) {
+    if (terms == capacity) {
+        resize(capacity * 2); // 双倍扩展容量
+    }
+    termArray[terms++] = Term(coef, exp); // 添加新项到数组中
+}
+
+Polynomial Polynomial::add(const Polynomial& poly) const {
+    Polynomial result;
+
+    int i = 0, j = 0;
+    while (i < terms && j < poly.terms) {
+        if (termArray[i].exp == poly.termArray[j].exp) {
+            result.addTerm(termArray[i].coef + poly.termArray[j].coef, termArray[i].exp); // 相同指数的项相加
+            ++i;
+            ++j;
+        }
+        else if (termArray[i].exp > poly.termArray[j].exp) {
+            result.addTerm(termArray[i].coef, termArray[i].exp); // 添加指数大的项
+            ++i;
+        }
+        else {
+            result.addTerm(poly.termArray[j].coef, poly.termArray[j].exp); // 添加指数小的项
+            ++j;
+        }
+    }
+
+    while (i < terms) {
+        result.addTerm(termArray[i].coef, termArray[i].exp); // 添加剩余的项
+        ++i;
+    }
+
+    while (j < poly.terms) {
+        result.addTerm(poly.termArray[j].coef, poly.termArray[j].exp); // 添加剩余的项
+        ++j;
+    }
+
+    return result;
+}
+
+Polynomial Polynomial::sub(const Polynomial& poly) const {
+    Polynomial result;
+
+    int i = 0, j = 0;
+    while (i < terms && j < poly.terms) {
+        if (termArray[i].exp == poly.termArray[j].exp) {
+            result.addTerm(termArray[i].coef - poly.termArray[j].coef, termArray[i].exp); // 相同指数的项相减
+            ++i;
+            ++j;
+        }
+        else if (termArray[i].exp > poly.termArray[j].exp) {
+            result.addTerm(termArray[i].coef, termArray[i].exp); // 添加指数大的项
+            ++i;
+        }
+        else {
+            result.addTerm(-poly.termArray[j].coef, poly.termArray[j].exp); // 添加指数小的项，系数取负
+            ++j;
+        }
+    }
+
+    while (i < terms) {
+        result.addTerm(termArray[i].coef, termArray[i].exp); // 添加剩余的项
+        ++i;
+    }
+
+    while (j < poly.terms) {
+        result.addTerm(-poly.termArray[j].coef, poly.termArray[j].exp); // 添加剩余的项，系数取负
+        ++j;
+    }
+
+    return result;
+}
+
+float Polynomial::eval(float x) const {
+    float result = 0;
+    for (int i = 0; i < terms; ++i) {
+        result += termArray[i].coef * pow(x, termArray[i].exp); // 计算多项式在x处的值
+    }
+    return result;
+}
+
+ostream& operator<<(ostream& os, const Polynomial& poly) {
+    for (int i = 0; i < poly.terms; ++i) {
+        if (poly.termArray[i].coef != 0) {
+            if (poly.termArray[i].coef != 1) os << poly.termArray[i].coef; // 输出系数
+
+            if (poly.termArray[i].exp != 0) {
+                if (poly.termArray[i].exp != 1) os << "x^" << poly.termArray[i].exp; // 输出指数
+                else os << "x"; // 指数为1时简化输出
+            }
+        }
+
+        if (i < poly.terms - 1 && poly.termArray[i + 1].coef > 0) {
+            os << "+"; // 输出加号
+        }
+    }
+    return os;
+}
+
+istream& operator>>(istream& is, Polynomial& poly) {
+    float coef;
+    int exp;
+    while (true) {
+        cout << "Coefficient (enter 0 to exit): ";
+        is >> coef;
+        if (coef == 0) break; // 当系数为0时退出输入
+        cout << "Degree: ";
+        is >> exp;
+        poly.addTerm(coef, exp); // 添加新项到多项式中
+    }
+    return is;
+}
+
+int main() {
+    Polynomial p1, p2;
+
+    cout << "Polynomial A(x):\n";
+    cin >> p1; // 输入多项式A
+
+    cout << "Polynomial B(x):\n";
+    cin >> p2; // 输入多项式B
+
+    Polynomial sum = p1.add(p2); // 计算A和B的和
+    Polynomial difference = p1.sub(p2); // 计算A和B的差
+
+    cout << "Sum of the polynomials: ";
+    cout << sum << endl; // 输出多项式的和
+
+    cout << "Difference of the polynomials: ";
+    cout << difference << endl; // 输出多项式的差
+
+    return 0;
+}
